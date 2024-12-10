@@ -1,0 +1,42 @@
+name: Sync Code
+
+on:
+  workflow_dispatch:
+      inputs:
+        repo2_branch:
+          description: 'Branch Name (Repo2)'
+          required: true
+          default: 'main'
+
+jobs:
+  sync-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo1
+        uses: actions/checkout@v2
+        with:
+          ref: main
+          path: ./repo1
+      
+      - name: Delete All Files in Repo1
+        run: |
+          cd repo1
+          rm -rf *
+      
+      - name: Clone Repo2
+        run: | 
+          git clone https://${{ secrets.PAT }}@${{ secrets.REPO2_URL }} ./repo2
+      
+      - name: Copy Files from Source to Target
+        run: |
+          cd repo2
+          git checkout ${{ github.event.inputs.repo2_branch }}
+          cp -r * ../repo1
+          cd ../repo1
+          git config --global user.email "duykhanhrc@gmail.com"
+          git config --global user.name "Khanh Pham"
+          BRANCH_NAME="${{ github.event.inputs.repo2_branch }}-$(date '+%Y-%m-%d-%H-%M-%S')"
+          git checkout -b $BRANCH_NAME
+          git add -A
+          git commit -m "Sync code on $(date)"
+          git push -u origin $BRANCH_NAME

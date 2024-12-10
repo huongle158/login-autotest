@@ -1,0 +1,84 @@
+name: Sanity Test web
+on:
+  push:
+    branches:
+      - '!main'
+
+jobs:
+  prepare-cache:
+    name: Prepare cache
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Use Node.js 16.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          # cache: 'pnpm'
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - uses: actions/cache@v3
+        id: yarn-cache
+        with:
+          path: |
+            **/node_modules
+            ~/.cache/Cypress
+            ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: yarn --frozen-lockfile --prefer-offline
+
+  test-e2e:
+    name: Test E2E
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    needs: prepare-cache
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - uses: actions/cache@v3
+        id: yarn-cache
+        with:
+          path: |
+            **/node_modules
+            ~/.cache/Cypress
+            ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Install dependencies
+        if: steps.yarn-cache.outputs.cache-hit != 'true'
+        run: yarn --frozen-lockfile --prefer-offline
+
+      - name: E2E test
+        run: yarn cypress run --spec "cypress/e2e/add-panel.cy.ts,cypress/e2e/archive-panel.cy.ts,cypress/e2e/global-settings.cy.ts,cypress/e2e/onedrive-filter.cy.ts,cypress/e2e/outlook-filter.cy.ts,cypress/e2e/panel-settings.cy.ts,cypress/e2e/send-slack-message.cy.ts,cypress/e2e/to-do-list.cy.ts"
+
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: cypress-screenshots-${{ github.run_number }}
+          path: ./cypress/screenshots
+
+      # Test run video was always captured, so this action uses "always()" condition
+      - uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: cypress-videos-${{ github.run_number }}
+          path: ./cypress/videos

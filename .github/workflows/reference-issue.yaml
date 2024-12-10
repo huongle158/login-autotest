@@ -1,0 +1,18 @@
+---
+name: continuous-integration
+on:
+  pull_request:
+    types: [opened, edited]
+
+jobs:
+  reference-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for reference issue
+        run: |
+          if [[ "${{ github.event.pull_request.body }}" =~ \#[0-9]+ || "${{ github.event.pull_request.body }}" =~ https://github.com/eatteam21/[-a-zA-Z_0-9]+/issues/[0-9]+ ]]; then
+            echo "Pull request contains issue reference"
+          else
+            echo "Pull request does not contain issue reference"
+            exit 1
+          fi

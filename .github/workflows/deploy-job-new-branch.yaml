@@ -1,0 +1,47 @@
+name: Deploy Code To New Branch
+
+on:
+  workflow_dispatch:
+      inputs:
+        repo2_branch:
+          description: 'Branch Name (Repo2) - New Branch - First Time Create'
+          required: true
+          default: ''
+        repo1_branch:
+          description: 'Branch Name (Repo1)'
+          required: true
+          default: ''
+        commit_message:
+          description: 'Commit Message'
+          required: true
+          default: ''
+
+jobs:
+  deploy-code-n:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo1
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.inputs.repo1_branch }}
+          path: ./repo1
+      
+      - name: Clone Repo2
+        run: | 
+          git clone https://${{ secrets.PAT }}@${{ secrets.REPO2_URL }} ./repo2
+      
+      - name: Delete All Files in Repo2
+        run: |
+          cd repo2
+          git checkout -b ${{ github.event.inputs.repo2_branch }}
+      
+      - name: Copy Files from Repo1 to Repo2
+        run: |
+          cd repo1
+          cp -r * ../repo2
+          cd ../repo2
+          git config --global user.email "duykhanhrc@gmail.com"
+          git config --global user.name "Khanh Pham"
+          git add -A
+          git commit -m "${{ github.event.inputs.commit_message }}"
+          git push -u origin ${{ github.event.inputs.repo2_branch }}
